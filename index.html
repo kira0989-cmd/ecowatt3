@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoWatt Color - Medidor Inteligente</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+  body{font-family:'Fredoka', sans-serif; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); min-height:100vh; display:flex; justify-content:center; padding:15px; margin:0;}
+  .card{background:white; max-width:600px; width:100%; border-radius:25px; padding:22px; box-shadow:0 15px 35px rgba(0,0,0,0.15); border:4px solid #fff;}
+  h1{text-align:center; font-size:32px; background: linear-gradient(90deg, #2d6a4f, #ff6b6b, #f9a826); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin:0;}
+  .sub{text-align:center; color:#666; font-size:13px; margin-bottom:18px;}
+  label{font-weight:600; color:#444; display:block; margin-top:14px; font-size:13.5px;}
+  select, input{width:100%; padding:11px; margin-top:5px; border-radius:12px; border:2px solid #e0e0e0; font-size:14px; background:#fafafa; box-sizing:border-box;}
+  select:focus, input:focus{border-color:#2d6a4f; outline:none;}
+  .row{display:flex; gap:10px;}
+  .row div{flex:1;}
+  .btn{width:100%; margin-top:12px; border:none; padding:13px; border-radius:14px; font-size:15px; font-weight:bold; cursor:pointer; transition:0.3s;}
+  .btn-cal{background: linear-gradient(90deg, #2d6a4f, #40916c); color:white;}
+  .btn-med{background: linear-gradient(90deg, #ff6b6b, #ff8e53); color:white; animation: pulse 2s infinite;}
+  @keyframes pulse{0%{transform:scale(1)} 50%{transform:scale(1.03)} 100%{transform:scale(1)}}
+  #medidor{display:none; margin-top:18px; background:#1a1a2e; border-radius:15px; padding:15px; color:white; text-align:center;}
+  .barra{height:22px; background:#333; border-radius:10px; overflow:hidden; margin:10px 0;}
+  .llenado{height:100%; width:0%; background: linear-gradient(90deg, #00f260, #0575e6); transition: width 0.2s;}
+  #resultado{display:none; margin-top:18px; background: linear-gradient(135deg, #e0f7fa, #f3e5f5); border-radius:15px; padding:15px; border:2px dashed #2d6a4f;}
+  .badge{display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; color:white; margin-right:5px;}
+  .b1{background:#2d6a4f} .b2{background:#ff6b6b} .b3{background:#f9a826} .b4{background:#4361ee}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🌈 EcoWatt Lab</h1>
+  <p class="sub">Reduce el consumo fantasma <br><span class="badge b1">Energía</span><span class="badge b2">Tiempo</span><span class="badge b3">Masa CO₂</span><span class="badge b4">Dinero</span></p>
+
+  <label>1. 🏠 ¿Dónde está el aparato?</label>
+  <select id="lugar"><option>Mi cuarto</option><option>Sala</option><option>Cocina</option><option>Toda la casa</option></select>
+
+  <label>2. 🔌 Elige tu electrodoméstico (Potencia fantasma real):</label>
+  <select id="aparato">
+    <option value="0">-- Toca aquí --</option>
+    <option value="1.2">📱 Cargador celular (1.2W)</option>
+    <option value="3">🎮 PlayStation / Xbox Standby (3W)</option>
+    <option value="5">📺 Microondas reloj (5W)</option>
+    <option value="6.8">📺 Smart TV 55" (6.8W)</option>
+    <option value="4.5">📡 Decodificador Claro/Tigo (4.5W)</option>
+    <option value="8">🔊 Equipo sonido (8W)</option>
+    <option value="2.5">💻 Laptop cerrada (2.5W)</option>
+    <option value="1.5">🔌 Cargador laptop solo (1.5W)</option>
+    <option value="4">📶 Router WiFi (4W)</option>
+    <option value="10">🎮 PC Gamer + RGB (10W)</option>
+    <option value="12">❄️ Refri viejo (12W fantasma)</option>
+  </select>
+
+  <div class="row">
+    <div><label>3. ⏰ Horas inactivo al día:</label><input type="number" id="horas" value="20"></div>
+    <div><label>4. 📅 Días al mes:</label><input type="number" id="dias" value="30"></div>
+  </div>
+  <div class="row">
+    <div><label>5. 🔢 ¿Cuántos tienes?</label><input type="number" id="cant" value="1"></div>
+    <div><label>6. 💡 ¿Lo desconectas a veces?</label><select id="habito"><option value="1">Nunca</option><option value="0.7">A veces</option><option value="0.3">Casi siempre</option></select></div>
+  </div>
+  <label>7. 💰 ¿Cuánto pagas por kWh? (Q)</label><input type="number" id="precio" value="1.15" step="0.01">
+
+  <button class="btn btn-med" onclick="conectarMedidor()">📱 CONECTAR CABLE Y MEDIR ENERGÍA</button>
+  
+  <div id="medidor">
+    <div>🔌 Medidor EcoWatt Conectado...</div>
+    <div style="font-size:28px; margin:8px 0" id="watts">0.0 W</div>
+    <div class="barra"><div class="llenado" id="llenado"></div></div>
+    <small id="estado">Conecta tu cable USB para simular medición</small>
+  </div>
+
+  <button class="btn btn-cal" onclick="calcular()">✨ CALCULAR IMPACTO COLORIDO</button>
+  <div id="resultado"></div>
+</div>
+
+<script>
+let potenciaActual = 0;
+function conectarMedidor(){
+  const sel = document.getElementById('aparato').value;
+  if(sel==0){ alert("¡Primero elige un electrodoméstico! 🔌"); return; }
+  potenciaActual = parseFloat(sel);
+  document.getElementById('medidor').style.display='block';
+  document.getElementById('estado').innerText='Midiendo consumo fantasma...';
+  if(navigator.vibrate) navigator.vibrate(200);
+  
+  let w=0;
+  let interval = setInterval(()=>{
+    w+= Math.random()*1.5;
+    if(w>potenciaActual) w=potenciaActual + (Math.random()-0.5);
+    document.getElementById('watts').innerText = w.toFixed(1) + " W";
+    document.getElementById('llenado').style.width = (w/potenciaActual*100) + "%";
+    if(w>=potenciaActual*0.95){
+      clearInterval(interval);
+      document.getElementById('estado').innerText='✅ Medición estable - ¡Consumo fantasma detectado!';
+      if(navigator.vibrate) navigator.vibrate([100,50,100]);
+    }
+  },120);
+}
+
+function calcular(){
+  if(potenciaActual==0) potenciaActual = parseFloat(document.getElementById('aparato').value);
+  if(potenciaActual==0){ alert("Elige un aparato primero"); return;}
+  const h=parseFloat(document.getElementById('horas').value);
+  const d=parseFloat(document.getElementById('dias').value);
+  const c=parseFloat(document.getElementById('cant').value);
+  const hab=parseFloat(document.getElementById('habito').value);
+  const precio=parseFloat(document.getElementById('precio').value);
+
+  const energiaMes = (potenciaActual * h * d * c * hab)/1000;
+  const co2 = energiaMes * 0.4;
+  const dinero = energiaMes * precio;
+
+  let colorNivel = energiaMes < 0.5 ? "#2d6a4f" : energiaMes < 2 ? "#f9a826" : "#ff6b6b";
+  let emojiNivel = energiaMes < 0.5 ? "😊 Bajo" : energiaMes < 2 ? "😮 Medio" : "😱 ¡ALTO!";
+
+  document.getElementById('resultado').style.display='block';
+  document.getElementById('resultado').innerHTML=`
+    <div style="text-align:center; font-weight:bold; color:${colorNivel}; font-size:18px;">${emojiNivel} - Consumo Fantasma</div>
+    <hr>
+    <div>⚡ <b>Energía al mes:</b> ${energiaMes.toFixed(2)} kWh</div>
+    <div>⏱️ <b>Tiempo perdido:</b> ${(h*d).toFixed(0)} horas enchufado sin usar</div>
+    <div>🏔️ <b>Masa CO₂:</b> ${co2.toFixed(2)} kg (como si un carro recorriera ${(co2*4).toFixed(1)} km)</div>
+    <div>💵 <b>Dinero tirado:</b> Q${dinero.toFixed(2)} al mes | Q${(dinero*12).toFixed(2)} al año</div>
+    <div style="margin-top:10px; background:white; padding:10px; border-radius:10px;">
+      <b>🌟 Tu reto EcoWatt:</b><br>
+      Si desconectas este aparato ${h}h al día, en 1 año salvas <b>${(co2*12).toFixed(1)}kg de CO₂</b> = ¡Plantar ${(co2*12/20).toFixed(1)} arbolitos! 🌳
+    </div>
+  `;
+  window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
